@@ -14,7 +14,7 @@ namespace i8080
 
 struct i8080::Condition_flags
 {
-	uint8_t z, s, p, cy, ac;
+	bool z, s, p, cy, ac;
 };
 
 class i8080::Cpu
@@ -26,7 +26,9 @@ class i8080::Cpu
 				 std::function<void(uint8_t, uint8_t)> out);
 	
 	uint16_t pair(uint8_t r1, uint8_t r2);
-	void set_flags(uint16_t res);
+	void set_flags(uint8_t res);
+	void sum_flags(uint8_t a, uint8_t b, uint8_t cy = 0);
+	void dif_flags(uint8_t a, uint8_t b, uint8_t cy = 0);
 
 	void load_program(const std::string &path, uint16_t offset = 0x00);
 	void interrupt(uint8_t op);
@@ -125,6 +127,7 @@ class i8080::Cpu
 	private:
 	std::function<uint8_t(uint8_t)> in_handle_ {};
 	std::function<void(uint8_t, uint8_t)> out_handle_ {};
+	
 	
 	uint8_t b_ {0}, c_ {0}, d_ {0}, e_ {0}, h_ {0}, l_ {0}, a_ {0}; // registers
 	uint16_t sp_ {0}, pc_ {0}; // stack pointer, program counter

@@ -5,7 +5,7 @@ CC = g++
 INCLUDE_FLAGS = -I../include \
 				-IC:/mingw_dev_lib/include/SDL2
 				
-CFLAGS = -DDEBUG
+CFLAGS = -DDEBUG -g
 # dependency directory
 IDIR = ../include
 # object directory
@@ -18,13 +18,13 @@ LIBRARY_DIR = -LC:/mingw_dev_lib/lib
 _DEPS = cpu.hpp machine.hpp
 DEPS = $(pathsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJS = cpu.o arithmetic.o branch.o data_transfer.o logic.o stack.o test.o
+_OBJS = cpu.o arithmetic.o branch.o data_transfer.o logic.o stack.o machine.o
 OBJS = $(patsubst %,$(ODIR)/%,$(_OBJS))
 
 $(ODIR)/%.o: %.cpp $(DEPS)
 	$(CC) -c -o $@ $< $(INCLUDE_FLAGS) $(CFLAGS)
 	
-test: $(OBJS)
+emulator: $(OBJS)
 	$(CC) -o $@ $^ $(INCLUDE_FLAGS) $(LIBRARY_DIR) $(LIBRARY_FLAGS)
 	
 .PHONY: clean

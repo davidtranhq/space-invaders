@@ -212,9 +212,9 @@ int Cpu::emulate_op()
 			break;
 		case 0x46: mov_r(b_);
 			break;
-		case 0x47: mov(c_, a_);
+		case 0x47: mov(b_, a_);
 			break;
-		case 0x48: mov(c_, c_);
+		case 0x48: mov(c_, b_);
 			break; 
 		case 0x49: mov(c_, c_);
 			break; 
@@ -230,7 +230,7 @@ int Cpu::emulate_op()
 			break; 
 		case 0x4F: mov(c_, a_);
 			break;
-		case 0x50: mov(d_, d_);
+		case 0x50: mov(d_, b_);
 			break; 
 		case 0x51: mov(d_, c_);
 			break; 
@@ -246,7 +246,7 @@ int Cpu::emulate_op()
 			break; 
 		case 0x57: mov(d_, a_);
 			break;
-		case 0x58: mov(e_, e_);
+		case 0x58: mov(e_, b_);
 			break; 
 		case 0x59: mov(e_, c_);
 			break; 
@@ -278,7 +278,7 @@ int Cpu::emulate_op()
 			break; 
 		case 0x67: mov(h_, a_);
 			break;
-		case 0x68: mov(l_, l_);
+		case 0x68: mov(l_, b_);
 			break; 
 		case 0x69: mov(l_, c_);
 			break; 
@@ -310,7 +310,7 @@ int Cpu::emulate_op()
 			break;
 		case 0x77: mov_m(a_);
 			break;
-		case 0x78: mov(a_, a_);
+		case 0x78: mov(a_, b_);
 			break; 
 		case 0x79: mov(a_, c_);
 			break; 
@@ -566,15 +566,15 @@ int Cpu::emulate_op()
 			break;
 		case 0xF7: rst(6);
 			break;
-		case 0xF8: r_condition(!cf_.s);
+		case 0xF8: r_condition(cf_.s);
 			break;
 		case 0xF9: sphl();
 			break;
-		case 0xFA: j_condition(!cf_.s, opcode[1], opcode[2]);
+		case 0xFA: j_condition(cf_.s, opcode[1], opcode[2]);
 			break;
 		case 0xFB: ei();
 			break;
-		case 0xFC: c_condition(!cf_.s, opcode[1], opcode[2]);
+		case 0xFC: c_condition(cf_.s, opcode[1], opcode[2]);
 			break;
 		case 0xFD: nop();
 			break;
@@ -741,48 +741,48 @@ const std::array<std::pair<std::string, int>, 256> op_codes
 	{"SUB D", 1},
 	{"SUB E", 1},
 	{"SUB H", 1},
-	{"SUB M", 1},
 	{"SUB L", 1},
+	{"SUB M", 1},
 	{"SUB A", 1},
 	{"SBB B", 1},
 	{"SBB C", 1},
 	{"SBB D", 1},
 	{"SBB E", 1},
 	{"SBB H", 1},
-	{"SBB M", 1},
 	{"SBB L", 1},
+	{"SBB M", 1},
 	{"SBB A", 1},
 	{"ANA B", 1},
 	{"ANA C", 1},
 	{"ANA D", 1},
 	{"ANA E", 1},
 	{"ANA H", 1},
-	{"ANA M", 1},
 	{"ANA L", 1},
+	{"ANA M", 1},
 	{"ANA A", 1},
 	{"XRA B", 1},
 	{"XRA C", 1},
 	{"XRA D", 1},
 	{"XRA E", 1},
 	{"XRA H", 1},
-	{"XRA M", 1},
 	{"XRA L", 1},
+	{"XRA M", 1},
 	{"XRA A", 1},
 	{"ORA B", 1},
 	{"ORA C", 1},
 	{"ORA D", 1},
 	{"ORA E", 1},
 	{"ORA H", 1},
-	{"ORA M", 1},
 	{"ORA L", 1},
+	{"ORA M", 1},
 	{"ORA A", 1},
 	{"CMP B", 1},
 	{"CMP C", 1},
 	{"CMP D", 1},
 	{"CMP E", 1},
 	{"CMP H", 1},
-	{"CMP M", 1},
 	{"CMP L", 1},
+	{"CMP M", 1},
 	{"CMP A", 1},
 	{"RNZ", 1},
 	{"POP B", 1},
@@ -880,6 +880,8 @@ void Cpu::debug_info(std::ostream &os)
 		<< std::setw(2) << static_cast<int>(h_) << ' ' 
 		<< std::setw(2) << static_cast<int>(l_) << ' '
 		<< std::setw(2) << static_cast<int>(a_) << '\n';
+	os << "Memory at HL (" << std::setw(4) << static_cast<int>(pair(h_, l_)) << "): "
+		<< std::setw(2) << static_cast<int>(mem_[pair(h_, l_)]) << '\n';
 	os << "Flags (Z/S/P/C/AC): "
 		<< static_cast<int>(cf_.z) << ' ' << static_cast<int>(cf_.s) << ' '
 		<< static_cast<int>(cf_.p) << ' ' << static_cast<int>(cf_.cy) << ' '

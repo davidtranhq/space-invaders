@@ -4,29 +4,55 @@ using i8080::Cpu;
 
 // arithmetic group
 
-
-bool parity(uint16_t x)
+std::array<bool, 256> parity =
 {
-	x ^= x >> 8;
-	x ^= x >> 4;
-	x ^= x >> 2;
-	x ^= x >> 1;
-	return (~x) & 1;
-}
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1
+};
 
-void Cpu::set_flags(uint16_t res)
+void Cpu::set_flags(uint8_t res)
 {
+	// for logical operators
 	cf_.z = (res == 0);
 	cf_.s = ((res & 0x80) == 0x80);
-	cf_.p = (parity(res));
-	cf_.cy = (res > 0xFF);
-	cf_.ac = (res > 0x0F);
+	cf_.p = (parity[res]);
 }
+
+void Cpu::sum_flags(uint8_t a, uint8_t b, uint8_t cy)
+{
+	uint16_t sum = static_cast<uint16_t>(a) + static_cast<uint16_t>(b) + cy;
+	cf_.z = (static_cast<uint8_t>(a + b + cy) == 0);
+	cf_.s = ((sum & 0x80) == 0x80);
+	cf_.p = (parity[static_cast<uint8_t>(a + b + cy)]);
+	cf_.cy = (sum > 0xFF);
+	a &= 0x0F;
+	b &= 0x0F;
+	cf_.ac = ((a + b + cy) > 0x0F);
+}
+
+void Cpu::dif_flags(uint8_t a, uint8_t b, uint8_t cy)
+{
+	uint16_t dif = static_cast<uint16_t>(a) - static_cast<uint16_t>(b) - cy;
+	cf_.z = (dif == 0);
+	cf_.s = ((dif & 0x80) == 0x80);
+	cf_.p = (parity[static_cast<uint8_t>(a - b - cy)]);
+	cf_.cy = (a < (b + cy));
+	a &= 0x0F;
+	b &= 0x0F;
+	cf_.ac = (a < (b + cy));
+}
+
+
 
 void Cpu::add(uint8_t r)
 {
-	uint16_t sum = static_cast<uint16_t>(a_) + static_cast<uint16_t>(r);
-	set_flags(sum);
+	sum_flags(a_, r);
 	a_ = a_ + r;
 	cycles_ += 4;
 }
@@ -47,10 +73,9 @@ void Cpu::adi(uint8_t d)
 
 void Cpu::adc(uint8_t r)
 {
-	uint16_t sum = static_cast<uint16_t>(a_) + static_cast<uint16_t>(r)
-		+ static_cast<uint16_t>(cf_.cy);
-	set_flags(sum);
-	a_ = r + cf_.cy;
+	uint8_t carry = cf_.cy;
+	sum_flags(a_, r, cf_.cy);
+	a_ = a_ + r + carry;
 	cycles_ += 4;
 }
 
@@ -69,8 +94,7 @@ void Cpu::aci(uint8_t d)
 
 void Cpu::sub(uint8_t r)
 {
-	uint16_t dif = static_cast<uint16_t>(a_) - static_cast<uint16_t>(r);
-	set_flags(dif);
+	dif_flags(a_, r);
 	a_ -= r;
 	cycles_ += 4;
 }
@@ -90,10 +114,9 @@ void Cpu::sui(uint8_t d)
 
 void Cpu::sbb(uint8_t r)
 {
-	uint16_t dif = static_cast<uint16_t>(a_) - static_cast<uint16_t>(r)
-		- static_cast<uint16_t>(cf_.cy);
-	set_flags(dif);
-	a_ = a_ - r - cf_.cy;
+	uint8_t carry = cf_.cy;
+	dif_flags(a_, r, cf_.cy);
+	a_ = a_ - r - carry;
 	cycles_ += 4;
 }
 
@@ -113,8 +136,7 @@ void Cpu::sbi(uint8_t d)
 void Cpu::inr(uint8_t &r)
 {
 	uint8_t cy_flag {cf_.cy};
-	uint16_t sum = static_cast<uint16_t>(r) + 1;
-	set_flags(sum);
+	sum_flags(r, 1);
 	cf_.cy = cy_flag; // INR doesn't affect the cy flag
 	++r;
 	cycles_ += 5;
@@ -129,8 +151,7 @@ void Cpu::inr_m()
 void Cpu::dcr(uint8_t &r)
 {
 	uint8_t cy_flag {cf_.cy};
-	uint16_t dif = static_cast<uint16_t>(r) - 1;
-	set_flags(dif);
+	dif_flags(r, 1);
 	cf_.cy = cy_flag; // DCR doesn't affect the cy flag
 	--r;
 	cycles_ += 5;
@@ -159,20 +180,13 @@ void Cpu::inx(uint16_t &r)
 
 void Cpu::dcx(uint8_t &r1, uint8_t &r2)
 {
-	if (r1 == 0)
+	if (r2 == 0)
 	{
-		// underflow of high 8-bits
-		if (r2 == 0)
-		{
-			// underflow of low 8-bits
-			--r1;
-			--r2;
-		}
-		else
-			--r2;
+		--r2;
+		--r1;
 	}
 	else
-		--r1;
+		--r2;
 	cycles_ += 5;
 }
 
@@ -190,7 +204,7 @@ void Cpu::dad(uint8_t &r1, uint8_t &r2)
 	uint16_t res = pair(h_, l_) + pair(r1, r2);
 	l_ = static_cast<uint8_t>(res & 0xFF);
 	h_ = static_cast<uint8_t>((res & 0xFF00) >> 8);
-	cycles_ += 5;
+	cycles_ += 10;
 }
 
 void Cpu::dad(uint16_t &r)
@@ -205,14 +219,18 @@ void Cpu::dad(uint16_t &r)
 void Cpu::daa()
 {
 	int old_cycles {cycles_};
+	uint16_t old_pc {pc_};
+	uint8_t adjust {0x0};
 	// if the value of the least significant 4 bits of the accumulator is
 	// greater than 9 or if the AC flag is set, 6 is added to the accumulator
 	if (((a_ & 0x0F) > 9) || cf_.ac)
-		adi(6);
+		adjust += 0x06;
 	// if the value of the most significant 4 bits of the accumulator is now
 	// greater than 9 or if the AC flag is set, 6 is added to the most
 	// significant 4 bits of the accumulator
-	if ((((a_ & 0xF0) >> 4) > 9) || cf_.ac)
-		adi(0x60);
+	if ((((a_ & 0xF0) >> 4) > 9) || cf_.cy)
+		adjust += 0x60;
+	adi(adjust);
 	cycles_ = old_cycles + 4;
+	pc_ = old_pc;
 }

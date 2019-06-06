@@ -6,6 +6,10 @@ void Cpu::ana(uint8_t r)
 {
 	set_flags(a_ & r);
 	cf_.cy = 0;
+	cf_.ac = ( (a_ & 0x08) | (r & 0x08) );
+	// for some reason, according to 8085 manual, AC flag is set hear for ANA
+	// based on the logical OR of bits 3 of the operands
+	// http://www.nj7p.org/Manuals/PDFs/Intel/9800301D.pdf p.22
 	a_ &= r;
 	cycles_ += 4;
 }
@@ -20,6 +24,7 @@ void Cpu::ana_m()
 void Cpu::ani(uint8_t d)
 {
 	ana(d);
+	cf_.cy = 0;
 	cf_.ac = 0;
 	pc_++;
 	cycles_ += 3;
@@ -38,7 +43,6 @@ void Cpu::xra_m()
 {
 	uint16_t adr {pair(h_, l_)};
 	xra(mem_[adr]);
-	pc_++;
 	cycles_ += 3;
 }
 
@@ -74,14 +78,14 @@ void Cpu::ori(uint8_t d)
 
 void Cpu::cmp(uint8_t r)
 {
-	set_flags(a_ - r);
+	dif_flags(a_, r);
 	cycles_ += 4;
 }
 
 void Cpu::cmp_m()
 {
 	uint16_t adr {pair(h_, l_)};
-	set_flags(a_ - mem_[adr]);
+	dif_flags(a_, mem_[adr]);
 	cycles_ += 7;
 }
 
@@ -89,7 +93,7 @@ void Cpu::cpi(uint8_t d)
 {
 	cmp(d);
 	++pc_;
-	cycles_ += 7;
+	cycles_ += 3;
 }
 
 void Cpu::rlc()
