@@ -5,19 +5,20 @@
 #include <iostream>
 #include <functional>
 
+namespace dav
+{
+
 namespace i8080
 {
-	struct Condition_flags;
-	class Cpu;
-	class Test;
-}
+	
+class Test;
 
-struct i8080::Condition_flags
+struct Condition_flags
 {
 	bool z, s, p, cy, ac;
 };
 
-class i8080::Cpu
+class Cpu
 {
 	public:
 	
@@ -71,8 +72,8 @@ class i8080::Cpu
 	void inx(uint16_t &r);
 	void dcx(uint8_t &r1, uint8_t &r2);
 	void dcx(uint16_t &r);
-	void dad(uint8_t &r1, uint8_t &r2);
-	void dad(uint16_t &r);
+	void dad(uint8_t r1, uint8_t r2);
+	void dad(uint16_t r);
 	void daa();
 	// logical group
 	void ana(uint8_t r);
@@ -141,3 +142,7 @@ class i8080::Cpu
 	
 	int cycles_ {0};
 };
+
+}
+
+}

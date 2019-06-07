@@ -1,8 +1,11 @@
-#include <chrono>
-
 #include "machine.hpp"
 
-using i8080::Machine;
+namespace dav
+{
+	
+namespace i8080
+{
+	
 using namespace std::chrono;
 using Clock = high_resolution_clock;
 	
@@ -12,8 +15,6 @@ Machine::Machine()
 		[this](uint8_t o) { return this->in(o); },
 		[this](uint8_t p, uint8_t val) { this->out(p, val); }
 	),
-	last_cpu_ {std::chrono::high_resolution_clock::now()},
-	last_int_ {std::chrono::high_resolution_clock::now()},
 	window_ {SDL_CreateWindow("Space Invaders!", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 		SCREEN_WIDTH, SCREEN_HEIGHT, 0)},
 	disp_ {SDL_CreateRGBSurface(0, SCREEN_WIDTH, SCREEN_HEIGHT, 32, 0, 0, 0, 0)}
@@ -30,40 +31,27 @@ Machine::Machine()
 	}
 }
 
-void Machine::check_interrupt()
+void Machine::execute_cpu(long cyc)
 {
-	if (duration_cast<microseconds>(Clock::now() - last_int_)
-		> 8333us) // interrupt every half a frame or 1666... us divided by 2
+	int cyc_ran {0};
+	int cyc_start {0};
+	int cyc_finish {0};
+	while (cyc_ran < cyc)
 	{
-		if (vbl_) // end of screen interrupt
-			cpu_.interrupt(0xD7); // RST 2
-		else // middle of screen interrupt
-			cpu_.interrupt(0xCF); // RST 1
-		vbl_ = !vbl_;
-	}
-}
-
-void Machine::execute_cpu()
-{
-	auto time_since_last_cpu_ 
-		= duration_cast<microseconds>(Clock::now() - last_cpu_).count();
-	// cpu runs at 2Mhz
-	uint64_t cycles_to_catch_up = time_since_last_cpu_ * 2;
-	uint64_t cycles_executed {0};
-	uint64_t start_cycles {0}, end_cycles {0};
-	while (cycles_executed < cycles_to_catch_up)
-	{
-		start_cycles = cpu_.cycles();
+		cyc_start = cpu_.cycles();
 		cpu_.emulate_op();
-		end_cycles = cpu_.cycles();
-		cycles_executed += (end_cycles - start_cycles);
+		cyc_finish = cpu_.cycles();
+		cyc_ran += (cyc_finish - cyc_start);
 	}
-	last_cpu_ = Clock::now();
 }
 
 void Machine::run()
 {
 	SDL_Event e;
+	uint32_t last_tic = SDL_GetTicks();
+	constexpr double tic = 1000.0 / 60.0; // ms per tic
+	constexpr int cycles_per_ms = 2000; // 2 Mhz
+	constexpr double cycles_per_tic = cycles_per_ms * tic;
 	while (!done_)
 	{
 		while (SDL_PollEvent(&e))
@@ -77,21 +65,28 @@ void Machine::run()
 					case SDLK_d:
 						cpu_.debug_info();
 						break;
+					default:
+						key_down(e.key.keysym.sym);
+				}
+			}
+			else if (e.type == SDL_KEYUP)
+			{
+				switch (e.key.keysym.sym)
+				{
+					default:
+						key_up(e.key.keysym.sym);
 				}
 			}
 		}
-		if (first_execution_)
+		if ((SDL_GetTicks() - last_tic) >= tic)
 		{
-			first_execution_ = false;
-			last_cpu_ = Clock::now();
-			last_frame_ = last_cpu_;
-			last_int_ = last_cpu_;
-		}
-		execute_cpu();
-		if (duration_cast<milliseconds>(Clock::now() - last_frame_).count() > 16.6667)
-		{
+			last_tic = SDL_GetTicks();
+			execute_cpu(cycles_per_tic / 2);
+			cpu_.interrupt(0xCF);
+			execute_cpu(cycles_per_tic / 2);
 			update_screen();
-			last_frame_ = Clock::now();
+			cpu_.interrupt(0xD7);
+			last_tic = SDL_GetTicks();
 		}
 	}
 }
@@ -107,7 +102,7 @@ void Machine::update_screen()
 			for (int j {0}; j < 8; ++j)
 			{	
 				int idx = (row - j) * SCREEN_WIDTH + col;
-				if (cpu_.memory()[i] & 1 >> j)
+				if (cpu_.memory()[i] & 1 << j)
 					pix[idx] = 0xFFFFFF;
 				else
 					pix[idx] = 0x000000;
@@ -160,40 +155,51 @@ void Machine::out(uint8_t port, uint8_t val)
 	}
 }
 
-void Machine::key_down(KeyPress k)
+void Machine::key_down(SDL_Keycode k)
 {
 	switch (k)
 	{
-		case KeyPress::left:
+		case SDLK_c:
+			inp1_ |= 0x1; // coin
+			std::cout << "inserted coin";
+			break;
+		case SDLK_LEFT:
 			inp1_ |= 0x20; // bit 5
 			break;
-		case KeyPress::right:
+		case SDLK_RIGHT:
 			inp1_ |= 0x40; // bit 6;
 			break;
-		case KeyPress::up:
+		case SDLK_UP:
 			inp1_ |= 0x60; // bit 7
 			break;
-		case KeyPress::down:
+		case SDLK_DOWN:
 			inp1_ |= 0x80; // bit 8;
 			break;
 	}
 }
 
-void Machine::key_up(KeyPress k)
+void Machine::key_up(SDL_Keycode k)
 {
 	switch (k)
 	{
-		case KeyPress::left:
-			inp1_ &= 0xEF; // clear bit 5
+		case SDLK_c:
+			inp1_ |= ~0x1;
 			break;
-		case KeyPress::right:
-			inp1_ &= 0xDF; // clear bit 6;
+		case SDLK_LEFT:
+			inp1_ &= ~0x20; // clear bit 5
 			break;
-		case KeyPress::up:
-			inp1_ &= 0xBF; // clear bit 7
+		case SDLK_RIGHT:
+			inp1_ &= ~0x40; // clear bit 6;
 			break;
-		case KeyPress::down:
-			inp1_ &= 0x7F; // clear bit 8;
+		case SDLK_UP:
+			inp1_ &= ~0x60; // clear bit 7
+			break;
+		case SDLK_DOWN:
+			inp1_ &= ~0x80; // clear bit 8;
 			break;
 	}
+}
+
+}
+
 }

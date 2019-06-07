@@ -6,7 +6,11 @@
 
 #include "cpu.hpp"
 
-using i8080::Cpu;
+namespace dav
+{
+	
+namespace i8080
+{
 
 Cpu::Cpu() {}
 
@@ -894,3 +898,7 @@ void Cpu::debug_info(std::ostream &os)
 }
 
 #endif
+
+}
+
+}

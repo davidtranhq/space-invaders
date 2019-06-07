@@ -19,7 +19,7 @@ static const u8 OPCODES_CYCLES[] = {
     4,  4,  4,  4,  4,  4,  7,  4,  4,  4,  4,  4,  4,  4,  7,  4,  // B
     5,  10, 10, 10, 11, 11, 7,  11, 5,  10, 10, 10, 11, 11, 7,  11, // C
     5,  10, 10, 10, 11, 11, 7,  11, 5,  10, 10, 10, 11, 11, 7,  11, // D
-    5,  10, 10, 18, 11, 11, 7,  11, 5,  5,  10, 5,  11, 11, 7,  11, // E
+    5,  10, 10, 18, 11, 11, 7,  11, 5,  5,  10, 4,  11, 11, 7,  11, // E
     5,  10, 10, 4,  11, 11, 7,  11, 5,  5,  10, 4,  11, 11, 7,  11  // F
 };
 
@@ -633,7 +633,7 @@ void i8080_step(i8080* const c) {
     case 0xA4: i8080_ana(c, c->h); break; // ANA H
     case 0xA5: i8080_ana(c, c->l); break; // ANA L
     case 0xA6: i8080_ana(c, i8080_rb(c, i8080_get_hl(c))); break; // ANA M
-    case 0xE6: i8080_ana(c, i8080_next_byte(c)); break; // ANI byte
+    case 0xE6: i8080_ana(c, i8080_next_byte(c)); c->hf = 0; break; // ANI byte
 
     case 0xAF: i8080_xra(c, c->a); break; // XRA A
     case 0xA8: i8080_xra(c, c->b); break; // XRA B
@@ -677,7 +677,7 @@ void i8080_step(i8080* const c) {
     case 0xFA: i8080_cond_jmp(c, c->sf == 1); break; // JM
 
     case 0xE9: c->pc = i8080_get_hl(c); break; // PCHL
-    case 0xCD: i8080_call(c, i8080_next_word(c)); break; // CALL
+    case 0xCD: i8080_call(c, i8080_next_word(c)); c->cyc += 6; break; // CALL
 
     case 0xC4: i8080_cond_call(c, c->zf == 0); break; // CNZ
     case 0xCC: i8080_cond_call(c, c->zf == 1); break; // CZ

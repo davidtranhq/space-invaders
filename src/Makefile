@@ -1,33 +1,28 @@
-# The compiler we are using
-CC = g++
-
-# include directories
 INCLUDE_FLAGS = -I../include \
 				-IC:/mingw_dev_lib/include/SDL2
-				
+LINKER_FLAGS = -lmingw32 -lSDL2main -lSDL2
+LIBRARY_FLAGS = -LC:/mingw_dev_lib/lib
 CFLAGS = -DDEBUG -g
-# dependency directory
-IDIR = ../include
-# object directory
-ODIR = obj
-# libraries needed
-LIBRARY_FLAGS = -lmingw32 -lSDL2main -lSDL2
-# library directories
-LIBRARY_DIR = -LC:/mingw_dev_lib/lib
-
 _DEPS = cpu.hpp machine.hpp
-DEPS = $(pathsubst %,$(IDIR)/%,$(_DEPS))
+DEPS = $(pathsubst %, ..\\include\\%, $(_DEPS))
+ODIR = obj
+_OBJS = cpu.o machine.o instructions.o main.o
+OBJS = $(patsubst %, $(ODIR)\\%, $(_OBJS))
+	
 
-_OBJS = cpu.o arithmetic.o branch.o data_transfer.o logic.o stack.o machine.o
-OBJS = $(patsubst %,$(ODIR)/%,$(_OBJS))
-
-$(ODIR)/%.o: %.cpp $(DEPS)
-	$(CC) -c -o $@ $< $(INCLUDE_FLAGS) $(CFLAGS)
+	
+$(ODIR)\\%.o: %.cpp $(DEPS)
+	g++ -c -o $@ $< $(INCLUDE_FLAGS) $(CFLAGS)
 	
 emulator: $(OBJS)
-	$(CC) -o $@ $^ $(INCLUDE_FLAGS) $(LIBRARY_DIR) $(LIBRARY_FLAGS)
-	
-.PHONY: clean
+	g++ -o $@ $^ $(INCLUDE_FLAGS) $(LINKER_FLAGS) $(LIBRARY_FLAGS)
+
+.PHONY: clean cpu
+
+CPU_OBJS = $(patsubst %, $(ODIR)\\%, cpu.o instructions.o)
+
+cpu: $(CPU_OBJS) 
 
 clean:
-	del $(ODIR)\*.o /Q
+	del $(OBJS) /Q
+
