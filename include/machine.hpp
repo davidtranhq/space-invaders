@@ -2,17 +2,14 @@
 
 #include <chrono>
 #include <SDL.h>
-#include <SDL_mixer.h>
 
 #include "cpu.hpp"
+#include "audio.hpp"
 
 #define SCREEN_HEIGHT 256
 #define SCREEN_WIDTH 224
-
-namespace dav
-{
 	
-namespace i8080
+namespace space_invaders
 {
 
 
@@ -32,7 +29,7 @@ class Machine
 	void update_screen();
 	
 	private:
-	Cpu cpu_;
+	i8080::Cpu cpu_;
 	std::array<uint8_t, 0x10000> memory_;
 	
 	uint8_t shift0 {0};
@@ -47,13 +44,11 @@ class Machine
 	std::array<std::array<std::array<uint8_t, 3>, SCREEN_WIDTH>, SCREEN_HEIGHT> screen_buf_ {};
 	SDL_Window *window_;
 	SDL_Surface *disp_;
-	std::array<Mix_Chunk *, 9> sounds_ {};
+	std::array<Wav, 9> sounds_;
 	
 	void execute_cpu(long cyc);
 	void play_sound();
 	
 };
-
-}
 
 }

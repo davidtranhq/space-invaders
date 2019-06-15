@@ -1,7 +1,4 @@
 #include "cpu.hpp"
-
-namespace dav
-{
 	
 namespace i8080
 {
@@ -682,8 +679,6 @@ void Cpu::hlt()
 void Cpu::nop()
 {
 	cycles_ += 4;
-}
-
 }
 
 }

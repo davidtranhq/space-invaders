@@ -3,10 +3,10 @@ INCLUDE_FLAGS = -I../include \
 LINKER_FLAGS = -lmingw32 -lSDL2main -lSDL2 -lSDL2_mixer
 LIBRARY_FLAGS = -LC:/mingw_dev_lib/lib
 CFLAGS = -DDEBUG -g
-_DEPS = cpu.hpp machine.hpp
+_DEPS = cpu.hpp machine.hpp audio.hpp
 DEPS = $(pathsubst %, ..\\include\\%, $(_DEPS))
 ODIR = obj
-_OBJS = cpu.o machine.o instructions.o main.o
+_OBJS = cpu.o machine.o instructions.o main.o audio.o
 OBJS = $(patsubst %, $(ODIR)\\%, $(_OBJS))
 	
 

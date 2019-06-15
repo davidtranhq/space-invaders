@@ -3,14 +3,8 @@
 #include <fstream>
 #include <bitset>
 
-namespace dav
+namespace space_invaders
 {
-	
-namespace i8080
-{
-	
-using namespace std::chrono;
-using Clock = high_resolution_clock;
 	
 Machine::Machine()
 	: cpu_
@@ -21,15 +15,20 @@ Machine::Machine()
 	),
 	window_ {SDL_CreateWindow("Space Invaders!", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 		SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE)},
-	disp_ {SDL_CreateRGBSurface(0, SCREEN_WIDTH, SCREEN_HEIGHT, 32, 0, 0, 0, 0)}
-{
-	
-	if (Mix_OpenAudio(44100, AUDIO_F32SYS, 2, 2048) < 0)
+	disp_ {SDL_CreateRGBSurface(0, SCREEN_WIDTH, SCREEN_HEIGHT, 32, 0, 0, 0, 0)},
+	sounds_
 	{
-		fprintf(stderr, "SDL_Mixer could not initialize! SDL_mixer error: %s\n", Mix_GetError());
-		throw;
+		Wav("audio/ufo_low"),
+		Wav("audio/shoot"),
+		Wav("audio/explosion"),
+		Wav("audio/invader_killed"),
+		Wav("audio/fleet1"),
+		Wav("audio/fleet2"),
+		Wav("audio/fleet3"),
+		Wav("audio/fleet4"),
+		Wav("audio/ufo_high")
 	}
-	
+{
 	if (!window_)
 	{
 		std::cerr << "Could not create SDL_Window!\n";
@@ -39,24 +38,6 @@ Machine::Machine()
 	{
 		std::cerr << "Could not create SDL_Surface!\n";
 		throw;
-	}
-	std::array<std::string, 9> sound_paths
-	{
-		"ufo_low",
-		"shoot",
-		"explosion",
-		"invader_killed",
-		"fleet1",
-		"fleet2",
-		"fleet3",
-		"fleet4",
-		"ufo_high",
-	};
-	
-	for (int i = 0; i < sounds_.size(); ++i)
-	{
-		std::string path {"audio/" + sound_paths[i] + ".wav"};
-		sounds_[i] = Mix_LoadWAV(path.c_str());
 	}
 }
 
@@ -184,20 +165,25 @@ void Machine::play_sound()
 	if (sound1_ != last_sound1_) // bit changed
 	{
 		if ( (sound1_ & 0x2) && !(last_sound1_ & 0x2) )
-            Mix_PlayChannel(-1, sounds_[1], 0);
+			sounds_[1].play();
         if ( (sound1_ & 0x4) && !(last_sound1_ & 0x4) )
-            Mix_PlayChannel(-1, sounds_[2], 0);
+            sounds_[2].play();
         if ( (sound1_ & 0x8) && !(last_sound1_ & 0x8) )
-			Mix_PlayChannel(-1, sounds_[3], 0);
+			sounds_[3].play();
 		last_sound1_ = sound1_;
 	}
 	if (sound2_ != last_sound2_)
 	{
-		for (int i {0}; i < 5; ++i)
-		{
-			if ( (sound2_ & (1 << i)) && !(last_sound2_ & (1 << i)) )
-				Mix_PlayChannel(-1, sounds_[i+4], 0);
-		}
+		if ( (sound2_ & 0x1) && !(last_sound2_ & 0x1) )
+			sounds_[4].play();
+		if ( (sound2_ & 0x2) && !(last_sound2_ & 0x2) )
+			sounds_[5].play();
+		if ( (sound2_ & 0x4) && !(last_sound2_ & 0x4) )
+			sounds_[6].play();
+		if ( (sound2_ & 0x8) && !(last_sound2_ & 0x8) )
+			sounds_[7].play();
+		if ( (sound2_ & 0x10) && !(last_sound2_ & 0x10) )
+			sounds_[8].play();
 		last_sound2_ = sound2_;
 	}
 }
@@ -290,8 +276,6 @@ void Machine::key_up(SDL_Keycode k)
 			inp2_ &= ~(1 << 4);
 			break;
 	}
-}
-
 }
 
 }

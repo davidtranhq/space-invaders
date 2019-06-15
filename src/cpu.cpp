@@ -6,9 +6,6 @@
 
 #include "cpu.hpp"
 
-namespace dav
-{
-	
 namespace i8080
 {
 
@@ -920,7 +917,5 @@ void Cpu::debug_info(std::ostream &os)
 }
 
 #endif
-
-}
 
 }

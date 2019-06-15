@@ -5,9 +5,6 @@
 #include <iostream>
 #include <functional>
 
-namespace dav
-{
-
 namespace i8080
 {
 	
@@ -153,7 +150,5 @@ class Cpu
 	void sum_flags(uint8_t a, uint8_t b, uint8_t cy = 0);
 	void dif_flags(uint8_t a, uint8_t b, uint8_t cy = 0);
 };
-
-}
 
 }
