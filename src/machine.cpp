@@ -1,5 +1,8 @@
 #include "machine.hpp"
 
+#include <fstream>
+#include <bitset>
+
 namespace dav
 {
 	
@@ -11,14 +14,22 @@ using Clock = high_resolution_clock;
 	
 Machine::Machine()
 	: cpu_
-	( 
+	(
+		memory_,
 		[this](uint8_t o) { return this->in(o); },
 		[this](uint8_t p, uint8_t val) { this->out(p, val); }
 	),
 	window_ {SDL_CreateWindow("Space Invaders!", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-		SCREEN_WIDTH, SCREEN_HEIGHT, 0)},
+		SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE)},
 	disp_ {SDL_CreateRGBSurface(0, SCREEN_WIDTH, SCREEN_HEIGHT, 32, 0, 0, 0, 0)}
 {
+	
+	if (Mix_OpenAudio(44100, AUDIO_F32SYS, 2, 2048) < 0)
+	{
+		fprintf(stderr, "SDL_Mixer could not initialize! SDL_mixer error: %s\n", Mix_GetError());
+		throw;
+	}
+	
 	if (!window_)
 	{
 		std::cerr << "Could not create SDL_Window!\n";
@@ -29,13 +40,31 @@ Machine::Machine()
 		std::cerr << "Could not create SDL_Surface!\n";
 		throw;
 	}
+	std::array<std::string, 9> sound_paths
+	{
+		"ufo_low",
+		"shoot",
+		"explosion",
+		"invader_killed",
+		"fleet1",
+		"fleet2",
+		"fleet3",
+		"fleet4",
+		"ufo_high",
+	};
+	
+	for (int i = 0; i < sounds_.size(); ++i)
+	{
+		std::string path {"audio/" + sound_paths[i] + ".wav"};
+		sounds_[i] = Mix_LoadWAV(path.c_str());
+	}
 }
 
 void Machine::execute_cpu(long cyc)
 {
-	int cyc_ran {0};
-	int cyc_start {0};
-	int cyc_finish {0};
+	long cyc_ran {0};
+	long cyc_start {0};
+	long cyc_finish {0};
 	while (cyc_ran < cyc)
 	{
 		cyc_start = cpu_.cycles();
@@ -54,39 +83,38 @@ void Machine::run()
 	constexpr double cycles_per_tic = cycles_per_ms * tic;
 	while (!done_)
 	{
-		while (SDL_PollEvent(&e))
-		{
-			if (e.type == SDL_QUIT)
-				done_ = true;
-			else if (e.type == SDL_KEYDOWN)
-			{
-				switch (e.key.keysym.sym)
-				{
-					case SDLK_d:
-						cpu_.debug_info();
-						break;
-					default:
-						key_down(e.key.keysym.sym);
-				}
-			}
-			else if (e.type == SDL_KEYUP)
-			{
-				switch (e.key.keysym.sym)
-				{
-					default:
-						key_up(e.key.keysym.sym);
-				}
-			}
-		}
 		if ((SDL_GetTicks() - last_tic) >= tic)
 		{
 			last_tic = SDL_GetTicks();
 			execute_cpu(cycles_per_tic / 2);
 			cpu_.interrupt(0xCF);
 			execute_cpu(cycles_per_tic / 2);
+			while (SDL_PollEvent(&e))
+			{
+				if (e.type == SDL_QUIT)
+					done_ = true;
+				else if (e.type == SDL_KEYDOWN)
+				{
+					switch (e.key.keysym.sym)
+					{
+						case SDLK_t:
+							cpu_.debug_info();
+							break;
+						default:
+							key_down(e.key.keysym.sym);
+					}
+				}
+				else if (e.type == SDL_KEYUP)
+				{
+					switch (e.key.keysym.sym)
+					{
+						default:
+							key_up(e.key.keysym.sym);
+					}
+				}
+			}
 			update_screen();
 			cpu_.interrupt(0xD7);
-			last_tic = SDL_GetTicks();
 		}
 	}
 }
@@ -102,7 +130,7 @@ void Machine::update_screen()
 			for (int j {0}; j < 8; ++j)
 			{	
 				int idx = (row - j) * SCREEN_WIDTH + col;
-				if (cpu_.memory()[i] & 1 << j)
+				if (memory_[i] & 1 << j)
 					pix[idx] = 0xFFFFFF;
 				else
 					pix[idx] = 0x000000;
@@ -116,9 +144,18 @@ void Machine::update_screen()
 		std::cerr << SDL_GetError();
 }
 
-void Machine::load_program(const std::string &in, uint16_t off)
+bool Machine::load_program(const std::string &in, uint16_t off)
 {
-	cpu_.load_program(in, off);
+	std::ifstream f {in, std::ios::binary};
+	if (!f.good())
+		return false;
+	std::copy
+	(
+		std::istreambuf_iterator<char>(f),
+		std::istreambuf_iterator<char>(),
+		memory_.begin() + off
+	);
+	return true;
 }
 
 uint8_t Machine::in(uint8_t port)
@@ -126,17 +163,43 @@ uint8_t Machine::in(uint8_t port)
 	uint8_t a;
 	switch (port)
 	{
-		case 0:
-			return 1;
 		case 1:
-			return 0;
+			a = inp1_;
+			break;
+		case 2:
+			a = inp2_;
+			break;
 		case 3:
 		{
-			a = ((shft_reg_ >> (8-shft_amnt_)) & 0xff);
+			uint16_t v = (shift1<<8) | shift0;    
+            a = ((v >> (8-shift_offset)) & 0xff);    
 		}
 		break;
 	}
 	return a;
+}
+
+void Machine::play_sound()
+{
+	if (sound1_ != last_sound1_) // bit changed
+	{
+		if ( (sound1_ & 0x2) && !(last_sound1_ & 0x2) )
+            Mix_PlayChannel(-1, sounds_[1], 0);
+        if ( (sound1_ & 0x4) && !(last_sound1_ & 0x4) )
+            Mix_PlayChannel(-1, sounds_[2], 0);
+        if ( (sound1_ & 0x8) && !(last_sound1_ & 0x8) )
+			Mix_PlayChannel(-1, sounds_[3], 0);
+		last_sound1_ = sound1_;
+	}
+	if (sound2_ != last_sound2_)
+	{
+		for (int i {0}; i < 5; ++i)
+		{
+			if ( (sound2_ & (1 << i)) && !(last_sound2_ & (1 << i)) )
+				Mix_PlayChannel(-1, sounds_[i+4], 0);
+		}
+		last_sound2_ = sound2_;
+	}
 }
 
 void Machine::out(uint8_t port, uint8_t val)
@@ -144,36 +207,53 @@ void Machine::out(uint8_t port, uint8_t val)
 	switch (port)
 	{
 		case 2:
-			shft_amnt_ = val & 0x07;
+			shift_offset = val & 0x7;    
+			break;
+		case 3: // play sound
+			sound1_ = val;
 			break;
 		case 4:
 		{
-			uint16_t v {static_cast<uint16_t>(val)};
-			shft_reg_ >>= 8;
-			shft_reg_ |= (v << 8);
+			shift0 = shift1;    
+            shift1 = val;    
 		} break;
+		case 5:
+			sound2_ = val;
+			break;
 	}
+	play_sound();
 }
 
 void Machine::key_down(SDL_Keycode k)
 {
 	switch (k)
 	{
-		case SDLK_c:
-			inp1_ |= 0x1; // coin
-			std::cout << "inserted coin";
+		case SDLK_c: // insert coin
+			inp1_ |= 1;
 			break;
-		case SDLK_LEFT:
-			inp1_ |= 0x20; // bit 5
+		case SDLK_s: // P1 Start
+			inp1_ |= 1 << 2;
 			break;
-		case SDLK_RIGHT:
-			inp1_ |= 0x40; // bit 6;
+		case SDLK_w: // P1 Shoot
+			inp1_ |= 1 << 4;
 			break;
-		case SDLK_UP:
-			inp1_ |= 0x60; // bit 7
+		case SDLK_a: // P1 left
+			inp1_ |= 1 << 5;
 			break;
-		case SDLK_DOWN:
-			inp1_ |= 0x80; // bit 8;
+		case SDLK_d: // P1 right
+			inp1_ |= 1 << 6;
+			break;
+		case SDLK_LEFT: // P2 left
+			inp2_ |= 1 << 5; 
+			break;
+		case SDLK_RIGHT: // P2 right
+			inp2_ |= 1 << 6;
+			break;
+		case SDLK_RETURN: // P2 start
+			inp1_ |= 1 << 1;
+			break;
+		case SDLK_UP: // P2 shoot
+			inp2_ |= 1 << 4;
 			break;
 	}
 }
@@ -182,20 +262,32 @@ void Machine::key_up(SDL_Keycode k)
 {
 	switch (k)
 	{
-		case SDLK_c:
-			inp1_ |= ~0x1;
+		case SDLK_c: // insert coin
+			inp1_ &= ~1;
 			break;
-		case SDLK_LEFT:
-			inp1_ &= ~0x20; // clear bit 5
+		case SDLK_s: // P1 Start
+			inp1_ &= ~(1 << 2);
 			break;
-		case SDLK_RIGHT:
-			inp1_ &= ~0x40; // clear bit 6;
+		case SDLK_w: // P1 Shoot
+			inp1_ &= ~(1 << 4);
 			break;
-		case SDLK_UP:
-			inp1_ &= ~0x60; // clear bit 7
+		case SDLK_a: // P1 left
+			inp1_ &= ~(1 << 5);
 			break;
-		case SDLK_DOWN:
-			inp1_ &= ~0x80; // clear bit 8;
+		case SDLK_d: // P1 right
+			inp1_ &= ~(1 << 6);
+			break;
+		case SDLK_LEFT: // P2 left
+			inp2_ &= ~(1 << 5); 
+			break;
+		case SDLK_RIGHT: // P2 right
+			inp2_ &= ~(1 << 6);
+			break;
+		case SDLK_RETURN: // P2 start
+			inp1_ &= ~(1 << 1);
+			break;
+		case SDLK_UP: // P2 shoot
+			inp2_ &= ~(1 << 4);
 			break;
 	}
 }

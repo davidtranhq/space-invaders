@@ -22,21 +22,51 @@ class Cpu
 {
 	public:
 	
-	explicit Cpu();
-	explicit Cpu(std::function<uint8_t(uint8_t)> in,
+	explicit Cpu(std::array<uint8_t, 0x10000> &a);
+	explicit Cpu(std::array<uint8_t, 0x10000> &a,
+				 std::function<uint8_t(uint8_t)> in,
 				 std::function<void(uint8_t, uint8_t)> out);
-	
-	uint16_t pair(uint8_t r1, uint8_t r2);
-	void set_flags(uint8_t res);
-	void sum_flags(uint8_t a, uint8_t b, uint8_t cy = 0);
-	void dif_flags(uint8_t a, uint8_t b, uint8_t cy = 0);
 
-	void load_program(const std::string &path, uint16_t offset = 0x00);
 	void interrupt(uint8_t op);
 	int emulate_op();
-	const std::array<uint8_t, 0x10000> &memory() const;
-	const int cycles() const;
 	
+	void set_pc(uint16_t x);
+	uint16_t pc() const;
+	int cycles() const;
+	uint8_t b() const;
+	uint8_t c() const;
+	uint8_t d() const;
+	uint8_t e() const;
+	uint8_t h() const;
+	uint8_t l() const;
+	uint16_t pair(uint8_t r1, uint8_t r2);
+	
+	// debug functions
+	#ifdef DEBUG
+		void debug_step(int x);
+		void debug_info(std::ostream &os = std::cout);
+		size_t debug_instructions {0};
+		friend class i8080::Test;
+	#endif
+	
+	private:
+	
+	std::function<uint8_t(uint8_t)> in_handle_ {};
+	std::function<void(uint8_t, uint8_t)> out_handle_ {};
+	
+	
+	uint8_t b_ {0}, c_ {0}, d_ {0}, e_ {0}, h_ {0}, l_ {0}, a_ {0}; // registers
+	uint16_t sp_ {0}, pc_ {0}; // stack pointer, program counter
+	Condition_flags cf_ {}; // condition flags
+	std::array<uint8_t, 0x10000> &mem_; // 64k ram addressing
+	int cycles_ {0};
+	
+	bool int_enabled_ {false};
+	bool int_pending_ {false};
+	uint8_t int_op_ {0};
+	bool halted_ {false};
+	
+	// instructions
 	void mov(uint8_t &r1, uint8_t r2);
 	void mov_r(uint8_t &r);
 	void mov_m(uint8_t r);
@@ -118,29 +148,10 @@ class Cpu
 	void hlt();
 	void nop();
 	
-	#ifdef DEBUG
-		void debug_step(int x);
-		void debug_info(std::ostream &os = std::cout);
-		size_t debug_instructions {0};
-		friend class i8080::Test;
-	#endif
-	
-	private:
-	std::function<uint8_t(uint8_t)> in_handle_ {};
-	std::function<void(uint8_t, uint8_t)> out_handle_ {};
-	
-	
-	uint8_t b_ {0}, c_ {0}, d_ {0}, e_ {0}, h_ {0}, l_ {0}, a_ {0}; // registers
-	uint16_t sp_ {0}, pc_ {0}; // stack pointer, program counter
-	std::array<uint8_t, 0x10000> mem_ {0}; // 64k ram
-	Condition_flags cf_ {}; // condition flags
-	
-	bool int_enabled_ {false};
-	bool int_pending_ {false};
-	uint8_t int_op_ {0};
-	bool halted_ {false};
-	
-	int cycles_ {0};
+	// helper functions
+	void set_flags(uint8_t res);
+	void sum_flags(uint8_t a, uint8_t b, uint8_t cy = 0);
+	void dif_flags(uint8_t a, uint8_t b, uint8_t cy = 0);
 };
 
 }

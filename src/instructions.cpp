@@ -377,7 +377,6 @@ void Cpu::ani(uint8_t d)
 {
 	ana(d);
 	cf_.cy = 0;
-	cf_.ac = 0;
 	pc_++;
 	cycles_ += 3;
 }
@@ -523,9 +522,9 @@ void Cpu::j_condition(uint8_t cf, uint8_t l, uint8_t h)
 
 void Cpu::call(uint8_t l, uint8_t h)
 {
-	mem_[sp_ - 1] = static_cast<uint8_t>((pc_+3) >> 8);
-	mem_[sp_ - 2] = static_cast<uint8_t>((pc_+3) & 0xff);
 	sp_ -= 2;
+	mem_[sp_ + 1] = static_cast<uint8_t>((pc_+3) >> 8);
+	mem_[sp_] = static_cast<uint8_t>((pc_+3) & 0xff);
 	uint16_t adr {pair(h, l)};
 	pc_ = adr-1;
 	cycles_ += 17;
@@ -566,8 +565,8 @@ void Cpu::r_condition(uint8_t cf)
 
 void Cpu::rst(int n)
 {
-	mem_[sp_ - 1] = static_cast<uint8_t>((pc_+1) >> 8);
-	mem_[sp_ - 2] = static_cast<uint8_t>((pc_+1) & 0xff);
+	mem_[sp_ - 1] = static_cast<uint8_t>((pc_) >> 8);
+	mem_[sp_ - 2] = static_cast<uint8_t>((pc_) & 0xff);
 	sp_ -= 2;
 	pc_ = 8*n - 1;
 	cycles_ += 11;

@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <SDL.h>
+#include <SDL_mixer.h>
 
 #include "cpu.hpp"
 
@@ -21,7 +22,7 @@ class Machine
 	Machine();
 	
 	void run();
-	void load_program(const std::string &in, uint16_t off = 0);
+	bool load_program(const std::string &in, uint16_t off = 0);
 	
 	uint8_t in(uint8_t port);
 	void out(uint8_t port, uint8_t val);
@@ -32,19 +33,24 @@ class Machine
 	
 	private:
 	Cpu cpu_;
+	std::array<uint8_t, 0x10000> memory_;
 	
-	uint8_t shft_in_ {0};
-	uint8_t shft_data_ {0};
-	uint8_t shft_amnt_ {0};
-	uint8_t shft_reg_ {0};
+	uint8_t shift0 {0};
+	uint8_t shift1 {0};
+	uint8_t shift_offset {0};
 	uint8_t inp1_ {0};
+	uint8_t inp2_ {0};
+	uint8_t sound1_ {0}, last_sound1_ {0};
+	uint8_t sound2_ {0}, last_sound2_ {0};
 	
 	bool done_ {false};
 	std::array<std::array<std::array<uint8_t, 3>, SCREEN_WIDTH>, SCREEN_HEIGHT> screen_buf_ {};
 	SDL_Window *window_;
 	SDL_Surface *disp_;
+	std::array<Mix_Chunk *, 9> sounds_ {};
 	
 	void execute_cpu(long cyc);
+	void play_sound();
 	
 };
 

@@ -1,6 +1,6 @@
 INCLUDE_FLAGS = -I../include \
 				-IC:/mingw_dev_lib/include/SDL2
-LINKER_FLAGS = -lmingw32 -lSDL2main -lSDL2
+LINKER_FLAGS = -lmingw32 -lSDL2main -lSDL2 -lSDL2_mixer
 LIBRARY_FLAGS = -LC:/mingw_dev_lib/lib
 CFLAGS = -DDEBUG -g
 _DEPS = cpu.hpp machine.hpp

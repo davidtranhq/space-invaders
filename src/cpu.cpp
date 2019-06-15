@@ -12,47 +12,70 @@ namespace dav
 namespace i8080
 {
 
-Cpu::Cpu() {}
-
-Cpu::Cpu(std::function<uint8_t(uint8_t)> in, std::function<void(uint8_t, uint8_t)> out) 
-	: in_handle_(in), out_handle_(out)
+Cpu::Cpu(std::array<uint8_t, 0x10000> &a) 
+	: mem_(a)
 {}
 
-void Cpu::load_program(const std::string &path, uint16_t offset)
-{
-	std::ifstream f {path, std::ios::binary | std::ios::in};
-	f >> std::noskipws;
-	std::copy
-	(
-		std::istreambuf_iterator<char>(f),
-		std::istreambuf_iterator<char>(),
-		mem_.begin() + offset
-	);
-	pc_ = offset;
-	#ifdef DEBUG
-		std::cout << "File loaded, size " << std::dec << f.tellg() << '\n';
-	#endif
-	mem_[368] = 0x7;
-}
+Cpu::Cpu(std::array<uint8_t, 0x10000> &a, 
+		 std::function<uint8_t(uint8_t)> in, 
+		 std::function<void(uint8_t, uint8_t)> out) 
+	: mem_(a), 
+	  in_handle_(in), 
+	  out_handle_(out)
+{}
 
 uint16_t Cpu::pair(uint8_t r1, uint8_t r2)
 {
 	return static_cast<uint16_t>(r1) << 8 | static_cast<uint16_t>(r2);
 }
 
-const std::array<uint8_t, 0x10000> &Cpu::memory() const
+void Cpu::set_pc(uint16_t x)
 {
-	return mem_;
+	pc_ = x;
 }
 
-const int Cpu::cycles() const
+int Cpu::cycles() const
 {
 	return cycles_;
 }
 
+uint8_t Cpu::b() const
+{
+	return b_;
+}
+
+uint8_t Cpu::c() const
+{
+	return c_;
+}
+
+uint8_t Cpu::d() const
+{
+	return d_;
+}
+
+uint8_t Cpu::e() const
+{
+	return e_;
+}
+
+uint8_t Cpu::h() const
+{
+	return h_;
+}
+
+uint8_t Cpu::l() const
+{
+	return l_;
+}
+
+uint16_t Cpu::pc() const
+{
+	return pc_;
+}
+
 void Cpu::interrupt(uint8_t op)
 {
-	halted_ = false;
 	if (int_enabled_)
 	{
 		int_enabled_ = false;
@@ -70,7 +93,6 @@ int Cpu::emulate_op()
 	{
 		opcode = &int_op_;
 		int_pending_ = false;
-		int_enabled_ = true;
 	}
 	switch (*opcode)
 	{
@@ -266,7 +288,7 @@ int Cpu::emulate_op()
 			break; 
 		case 0x5F: mov(e_, a_);
 			break;
-		case 0x60: mov(h_, h_);
+		case 0x60: mov(h_, b_);
 			break; 
 		case 0x61: mov(h_, c_);
 			break; 
@@ -344,7 +366,7 @@ int Cpu::emulate_op()
 			break;
 		case 0x86: add_m();
 			break;
-		case 0x87: adc(a_);
+		case 0x87: add(a_);
 			break;
 		case 0x88: adc(b_);
 			break; 
@@ -554,15 +576,15 @@ int Cpu::emulate_op()
 			break;
 		case 0xEF: rst(5);
 			break;
-		case 0xF0: r_condition(cf_.p);
+		case 0xF0: r_condition(!cf_.s);
 			break;
 		case 0xF1: pop_psw();
 			break;
-		case 0xF2: j_condition(cf_.p, opcode[1], opcode[2]);
+		case 0xF2: j_condition(!cf_.s, opcode[1], opcode[2]);
 			break;
 		case 0xF3: di();
 			break;
-		case 0xF4: c_condition(cf_.p, opcode[1], opcode[2]);
+		case 0xF4: c_condition(!cf_.s, opcode[1], opcode[2]);
 			break;
 		case 0xF5: push_psw();
 			break;
