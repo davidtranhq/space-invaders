@@ -1,6 +1,6 @@
 # Space Invaders
 
-A Space Invaders emulator written in C using SDL. Emulates the Intel 8080 microprocessor and the arcade cabinet that came along with the game. Download an executable [here](https://github.com/davidtranhq/space-invaders/releases)
+A Space Invaders emulator written in C using SDL. Emulates the Intel 8080 microprocessor and the arcade cabinet that came along with the game. Download an executable [here](https://github.com/davidtranhq/space-invaders/releases).
 
 ## Build
 
